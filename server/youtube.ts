@@ -230,8 +230,115 @@ export function formatViewsEs(n: number): string {
   return `${n.toLocaleString('es-ES')} vistas`;
 }
 
+// ---------------------------------------------------------------------------
+// YouTube Data API v3 (oficial, opcional): se usa si hay YOUTUBE_API_KEY en el .env.
+// Es la vía más fiable: no depende de leer páginas web de YouTube.
+// ---------------------------------------------------------------------------
+
+const API_CATEGORIES: Record<string, string> = {
+  '1': 'Film & Animation', '2': 'Autos & Vehicles', '10': 'Music', '15': 'Pets & Animals',
+  '17': 'Sports', '19': 'Travel & Events', '20': 'Gaming', '22': 'People & Blogs',
+  '23': 'Comedy', '24': 'Entertainment', '25': 'News & Politics', '26': 'Howto & Style',
+  '27': 'Education', '28': 'Science & Technology',
+};
+
+function getApiKey(): string {
+  return (process.env.YOUTUBE_API_KEY || '').trim();
+}
+
+export function hasYouTubeApiKey(): boolean {
+  return !!getApiKey();
+}
+
+function isoDurationToSeconds(iso: string): number {
+  const m = (iso || '').match(/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/);
+  if (!m) return 0;
+  return (parseInt(m[1] || '0', 10) * 3600) + (parseInt(m[2] || '0', 10) * 60) + parseInt(m[3] || '0', 10);
+}
+
+async function callDataApi(path: string, params: Record<string, string>): Promise<any | null> {
+  const key = getApiKey();
+  if (!key) return null;
+  const qs = new URLSearchParams({ ...params, key }).toString();
+  try {
+    const res = await fetch(`https://www.googleapis.com/youtube/v3/${path}?${qs}`, {
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+    const json: any = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const reason = json?.error?.errors?.[0]?.reason || json?.error?.status || res.status;
+      const msg = json?.error?.message ? String(json.error.message).slice(0, 160) : '';
+      lastFetchProblem = `La API oficial de YouTube respondió con error (${reason}${msg ? ': ' + msg : ''})`;
+      return null;
+    }
+    return json;
+  } catch (e: any) {
+    lastFetchProblem = `No hubo conexión con la API oficial de YouTube (${e?.cause?.code || e?.name || 'error de red'})`;
+    return null;
+  }
+}
+
+function detailsFromApiItem(item: any): VideoPageDetails {
+  const sn = item?.snippet || {};
+  return {
+    title: sn.title || '',
+    description: sn.description || '',
+    tags: Array.isArray(sn.tags) ? sn.tags.map((t: any) => String(t).trim()).filter(Boolean) : [],
+    channelName: sn.channelTitle || '',
+    channelId: sn.channelId || '',
+    category: API_CATEGORIES[String(sn.categoryId)] || '',
+    durationSeconds: isoDurationToSeconds(item?.contentDetails?.duration || ''),
+    viewCountNumeric: parseInt(item?.statistics?.viewCount || '0', 10) || 0,
+    uploadDate: typeof sn.publishedAt === 'string' ? sn.publishedAt.split('T')[0] : '',
+    isLive: sn.liveBroadcastContent === 'live',
+  };
+}
+
+async function fetchDetailsViaDataApi(videoId: string): Promise<VideoPageDetails | null> {
+  const json = await callDataApi('videos', { part: 'snippet,statistics,contentDetails', id: videoId });
+  const item = json?.items?.[0];
+  return item ? detailsFromApiItem(item) : null;
+}
+
+async function searchViaDataApi(query: string, maxDays: number): Promise<SearchResultVideo[]> {
+  const publishedAfter = new Date(Date.now() - maxDays * 86400000).toISOString();
+  const found = await callDataApi('search', {
+    part: 'snippet',
+    type: 'video',
+    order: 'viewCount',
+    maxResults: '25',
+    q: query,
+    publishedAfter,
+    relevanceLanguage: 'es',
+  });
+  const ids: string[] = (found?.items || []).map((i: any) => i?.id?.videoId).filter(Boolean);
+  if (ids.length === 0) return [];
+
+  const stats = await callDataApi('videos', { part: 'snippet,statistics,contentDetails', id: ids.join(',') });
+  const out: SearchResultVideo[] = [];
+  for (const item of stats?.items || []) {
+    const d = detailsFromApiItem(item);
+    const age = ageDaysFromDate(item?.snippet?.publishedAt || '');
+    out.push({
+      videoId: item.id,
+      title: d.title,
+      channel: d.channelName,
+      channelId: d.channelId,
+      viewsNumeric: d.viewCountNumeric,
+      publishedText: formatAgeEs(age),
+      ageDays: age,
+      durationText: '',
+    });
+  }
+  return out;
+}
+
 /** Datos de la página de un video (etiquetas, descripción completa, categoría...). */
 export async function fetchVideoPageDetails(videoId: string): Promise<VideoPageDetails | null> {
+  if (hasYouTubeApiKey()) {
+    const viaApi = await fetchDetailsViaDataApi(videoId);
+    if (viaApi) return viaApi;
+  }
   const html = await fetchText(`https://www.youtube.com/watch?v=${videoId}&hl=es`);
   if (!html) return null;
 
@@ -499,11 +606,14 @@ function describeSearchData(data: any): string {
     return 'respuesta ilegible';
   }
   const count = (needle: string) => raw.split(needle).length - 1;
-  const bits = [
+  const bits: string[] = [];
+  if (data && typeof data === 'object') bits.push(`claves: ${Object.keys(data).slice(0, 6).join('/')}`);
+  if (data?.error?.message) bits.push(`error: ${String(data.error.message).slice(0, 100)}`);
+  bits.push(...[
     `videoRenderer×${count('"videoRenderer"')}`,
     `lockupViewModel×${count('"lockupViewModel"')}`,
     `reelItem×${count('"reelItemRenderer"')}`,
-  ];
+  ]);
   if (/"messageRenderer"|did not match any|no coincide/i.test(raw)) bits.push('YouTube indica que no hay coincidencias');
   return bits.join(', ');
 }
@@ -560,6 +670,17 @@ async function searchViaInnerTube(query: string, params: string): Promise<Search
 
 export async function searchYouTubeVideos(query: string, timeframe: Timeframe): Promise<SearchResultVideo[]> {
   const maxDays = timeframeToMaxDays(timeframe);
+
+  // Vía 0: API oficial (si hay YOUTUBE_API_KEY)
+  let apiProblem = '';
+  if (hasYouTubeApiKey()) {
+    const official = await searchViaDataApi(query, maxDays);
+    if (official.length > 0) return official;
+    apiProblem = lastFetchProblem || 'La API oficial de YouTube no devolvió videos para esta búsqueda';
+  } else {
+    lastFetchProblem = 'No hay YOUTUBE_API_KEY configurada (la lectura sin clave suele ser bloqueada por YouTube)';
+  }
+
   const sp = maxDays > 31 ? SP_THIS_YEAR : SP_THIS_MONTH;
   const url = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}&sp=${sp}&hl=es&gl=ES`;
 
@@ -581,6 +702,7 @@ export async function searchYouTubeVideos(query: string, timeframe: Timeframe): 
 
   // Vía 3: sin filtro de fecha (el filtro se aplica después por la fecha de cada video)
   const unfiltered = await searchViaInnerTube(query, 'EgIQAQ==');
+  if (unfiltered.length === 0 && apiProblem) lastFetchProblem = apiProblem;
   return unfiltered;
 }
 
