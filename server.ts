@@ -7,6 +7,7 @@ import { GoogleGenAI, ThinkingLevel } from '@google/genai';
 import type { ContentTypeOverride } from './src/types/index.ts';
 import {
   extractYouTubeId,
+  getLastFetchProblem,
   fetchYouTubeVideoMetadata,
   timeframeToMaxDays,
 } from './server/youtube.ts';
@@ -170,6 +171,7 @@ app.post('/api/analyze-and-benchmark', async (req, res) => {
     if (raws.length === 0) {
       warnings.push(
         'No se pudieron leer videos competidores reales de YouTube en este intento (conexión o bloqueo temporal). ' +
+          (getLastFetchProblem() ? `Motivo: ${getLastFetchProblem()}. ` : '') +
           'Las sugerencias se basan solo en tu video; vuelve a intentarlo en unos minutos para ver la comparativa.'
       );
     } else if (raws.length < count) {

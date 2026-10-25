@@ -78,7 +78,7 @@ export async function collectCompetitors(
       seen.add(r.videoId);
       if (r.videoId === opts.ownVideoId) continue;
       if (isOwnChannel(r.channel, r.channelId, own)) continue;
-      if (r.ageDays !== null && r.ageDays > maxDays) continue;
+      if (r.ageDays !== null && r.ageDays > maxDays + 2) continue;
       const channelKey = normalizeName(r.channel);
       if ((perChannel.get(channelKey) || 0) >= MAX_PER_CHANNEL) continue;
       perChannel.set(channelKey, (perChannel.get(channelKey) || 0) + 1);
@@ -98,7 +98,7 @@ export async function collectCompetitors(
     return toRaw(c, details);
   });
 
-  const filtered = enriched.filter((r) => r.ageDays === null || r.ageDays <= maxDays + 1);
+  const filtered = enriched.filter((r) => r.ageDays === null || r.ageDays <= maxDays + 2);
   const raws = filtered.sort((a, b) => b.viewsNumeric - a.viewsNumeric).slice(0, opts.count);
   return { raws, queryUsed: usedQueries[0] || opts.queries[0] || '' };
 }
@@ -127,7 +127,7 @@ export async function competitorsFromUrls(
 
   return results
     .filter((r): r is RawCompetitor => !!r)
-    .filter((r) => r.ageDays !== null && r.ageDays <= maxDays + 1)
+    .filter((r) => r.ageDays !== null && r.ageDays <= maxDays + 2)
     .sort((a, b) => b.viewsNumeric - a.viewsNumeric)
     .slice(0, opts.count);
 }

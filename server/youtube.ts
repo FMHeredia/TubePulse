@@ -69,15 +69,37 @@ export function extractYouTubeId(url: string): string | null {
   return null;
 }
 
-async function fetchText(url: string): Promise<string | null> {
+// Cookies alternativas de consentimiento (YouTube en Europa muestra una pantalla de cookies
+// y, sin ellas, devuelve una página sin datos).
+const COOKIE_VARIANTS: string[] = [
+  'SOCS=CAI; CONSENT=PENDING+987',
+  'SOCS=CAESEwgDEgk0ODE3Nzk3MjQaAmVuIAEaBgiA_LyaBg; CONSENT=YES+cb.20210328-17-p0.es+FX+000',
+  'CONSENT=YES+1',
+];
+
+/** Último motivo por el que falló la lectura de YouTube (se muestra al usuario para poder diagnosticar). */
+let lastFetchProblem = '';
+export function getLastFetchProblem(): string {
+  return lastFetchProblem;
+}
+
+async function fetchText(url: string, cookie?: string): Promise<string | null> {
   try {
     const res = await fetch(url, {
-      headers: BASE_HEADERS,
+      headers: cookie ? { ...BASE_HEADERS, Cookie: cookie } : BASE_HEADERS,
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      lastFetchProblem = `YouTube respondió con el código ${res.status}`;
+      return null;
+    }
+    if (/consent\.youtube\.com/.test(res.url)) {
+      lastFetchProblem = 'YouTube mostró la pantalla de consentimiento de cookies';
+      return null;
+    }
     return await res.text();
-  } catch {
+  } catch (e: any) {
+    lastFetchProblem = `No hubo conexión con YouTube (${e?.cause?.code || e?.name || 'error de red'})`;
     return null;
   }
 }
@@ -402,16 +424,61 @@ export function timeframeToMaxDays(timeframe: Timeframe): number {
 const SP_THIS_MONTH = 'CAMSBAgEEAE%3D';
 const SP_THIS_YEAR = 'CAMSBAgFEAE%3D';
 
+const INNERTUBE_KEY = 'AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8';
+
+/** Vía alternativa: la misma API interna que usa la web de YouTube (no necesita cookies). */
+async function searchViaInnerTube(query: string, params: string): Promise<SearchResultVideo[]> {
+  try {
+    const res = await fetch(`https://www.youtube.com/youtubei/v1/search?prettyPrint=false&key=${INNERTUBE_KEY}`, {
+      method: 'POST',
+      headers: {
+        'User-Agent': USER_AGENT,
+        'Content-Type': 'application/json',
+        Origin: 'https://www.youtube.com',
+        'X-YouTube-Client-Name': '1',
+        'X-YouTube-Client-Version': '2.20250101.00.00',
+        'Accept-Language': 'es,en;q=0.9',
+      },
+      body: JSON.stringify({
+        context: { client: { clientName: 'WEB', clientVersion: '2.20250101.00.00', hl: 'es', gl: 'ES' } },
+        query,
+        params,
+      }),
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+    if (!res.ok) {
+      lastFetchProblem = `La API interna de YouTube respondió con el código ${res.status}`;
+      return [];
+    }
+    return parseSearchResults(await res.json());
+  } catch (e: any) {
+    lastFetchProblem = `No hubo conexión con YouTube (${e?.cause?.code || e?.name || 'error de red'})`;
+    return [];
+  }
+}
+
 export async function searchYouTubeVideos(query: string, timeframe: Timeframe): Promise<SearchResultVideo[]> {
   const maxDays = timeframeToMaxDays(timeframe);
   const sp = maxDays > 31 ? SP_THIS_YEAR : SP_THIS_MONTH;
-  const url = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}&sp=${sp}&hl=es`;
-  const html = await fetchText(url);
-  if (!html) return [];
+  const url = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}&sp=${sp}&hl=es&gl=ES`;
 
-  const data = extractJsonAfter(html, ['var ytInitialData = ', 'window["ytInitialData"] = ', 'ytInitialData = ']);
-  if (!data) return [];
-  return parseSearchResults(data);
+  // Vía 1: página de resultados, probando varias cookies de consentimiento
+  for (const cookie of COOKIE_VARIANTS) {
+    const html = await fetchText(url, cookie);
+    if (!html) continue;
+    const data = extractJsonAfter(html, ['var ytInitialData = ', 'window["ytInitialData"] = ', 'ytInitialData = ']);
+    const results = data ? parseSearchResults(data) : [];
+    if (results.length > 0) return results;
+    lastFetchProblem = 'La página de YouTube llegó sin lista de resultados';
+  }
+
+  // Vía 2: API interna de YouTube
+  const viaApi = await searchViaInnerTube(query, decodeURIComponent(sp));
+  if (viaApi.length > 0) return viaApi;
+
+  // Vía 3: sin filtro de fecha (el filtro se aplica después por la fecha de cada video)
+  const unfiltered = await searchViaInnerTube(query, 'EgIQAQ==');
+  return unfiltered;
 }
 
 export function normalizeName(name: string): string {
