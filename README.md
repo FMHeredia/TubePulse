@@ -78,13 +78,17 @@ chmod +x iniciar_mac_linux.sh
 
 Para ejecutar TubePulse en local sólo necesitas:
 * **Node.js**: Versión 18.0 o superior (incluye `npm`). Puedes descargarlo gratis desde [nodejs.org](https://nodejs.org).
-* Conexión a internet (para consultar datos de YouTube y Gemini AI).
+* Conexión a internet (para consultar datos de YouTube y, si la configuras, Gemini AI).
 
 ---
 
 ## 🔑 Configuración de Variables de Entorno (Opcional)
 
-TubePulse incluye un extractor inteligente y motor de búsqueda de competidores integrado. Si deseas activar las capacidades de inteligencia artificial de Gemini con Google Search Grounding y análisis multimodal de miniaturas:
+TubePulse funciona **sin ninguna clave**: lee los videos competidores directamente de YouTube y genera las sugerencias en tu propio equipo. La clave de Gemini es opcional y añade:
+
+* Redacción de sugerencias con IA (siempre respetando el tipo de tu video).
+* Respaldo para encontrar competidores si YouTube no responde.
+* Análisis de miniatura y de clips de video (requiere clave).
 
 1. Duplica el archivo `.env.example` y renómbralo a `.env`:
 ```bash
@@ -98,18 +102,43 @@ PORT=3000
 
 ---
 
+## 🎵 Videos de Música: cómo se detectan y qué se sugiere
+
+TubePulse clasifica tu video antes de buscar competidores y de generar sugerencias, para que **nunca se convierta una canción en una guía o tutorial**.
+
+* **Detección automática:** usa la categoría de YouTube, el formato del título (Video Oficial, Lyric Video, Live, Visualizer, Remix...), el género, el patrón «Artista - Canción» y la descripción. En el resultado verás «Tipo de video detectado», con el artista, la canción y el nivel de confianza.
+* **Corrección manual:** si se equivoca, cambia el selector **«Tipo de video»** del Paso 1 y vuelve a analizar.
+* **Sugerencias variadas, misma lógica:** se ofrecen varias opciones de título (clásico «Artista - Canción», canción primero, género + año, versión corta para móvil...) que mantienen la misma canción, artista y formato.
+* **Competidores del mismo tipo:** las búsquedas usan el género y el formato (por ejemplo, otros videos oficiales del mismo género).
+
+---
+
+## 🛠️ Si la comparativa sale vacía
+
+Si aparece el aviso *«No se pudieron leer videos competidores reales de YouTube»*, lee el texto que sigue a **«Motivo:»**:
+
+| Motivo | Qué hacer |
+| :--- | :--- |
+| YouTube mostró la pantalla de consentimiento de cookies | Vuelve a intentarlo; el programa prueba varias vías automáticamente. Si persiste, desactiva la VPN. |
+| No hubo conexión con YouTube | Revisa tu internet, antivirus o firewall. |
+| YouTube respondió con el código 429 o 403 | Bloqueo temporal por demasiadas consultas. Espera unos minutos. |
+
+El programa intenta tres vías en orden: la página de resultados (con varias cookies de consentimiento), la API interna de YouTube y una búsqueda sin filtro de fecha. Con clave de Gemini hay un cuarto respaldo.
+
+---
+
 ## 🌟 Principales Funcionalidades de TubePulse
 
 | Característica | Descripción |
 | :--- | :--- |
-| **Extractor Automático** | Pega cualquier URL de YouTube (`youtube.com/watch?v=...`) para extraer título, descripción, etiquetas reales (`<meta name="keywords">`) y miniatura. |
+| **Extractor Automático** | Pega cualquier URL de YouTube (`youtube.com/watch?v=...`) para extraer título, descripción, etiquetas reales, categoría y miniatura. |
+| **Detección del Tipo de Video** | Reconoce música, género, formato, artista y canción, y mantiene ese tipo en todas las sugerencias. |
 | **Filtro de Competencia (< 1 mes)** | Busca los 10 videos de otros canales similares más vistos publicados en los últimos 30 días, excluyendo automáticamente tu propio canal. |
 | **Matriz de Frecuencia de Etiquetas** | Tabla interactiva que calcula qué etiquetas se repiten (ej. 9/10, 8/10), vistas acumuladas, score de impacto y cuáles te faltan en tu video. |
 | **Panel de Gráficas Estadísticas** | Gráficas interactivas de adopción de tags, comparativa de vistas de los 10 competidores, tacómetro SEO (antes vs después) y auditoría de caracteres. |
 | **Exportación a Excel y Notepad** | Descarga con un solo clic el libro de cálculo estructurado `.xlsx` o el informe en texto `.txt` listo para el Bloc de Notas. |
-| **Sugerencias Optimizadas con IA** | Genera 4 variantes de títulos de alto CTR, descripción completa con marcas de tiempo (timestamps) y pack de tags garantizado bajo el límite de 500 caracteres de YouTube Studio. |
-| **Análisis Multimodal de Miniaturas** | Sube tu miniatura o clip de video para que Gemini evalúe contraste, legibilidad, expresión y prediga el CTR estimado. |
-| **Aplicación de Escritorio PWA** | Instala TubePulse como aplicación nativa de escritorio o móvil con icono propio. |
+| **Sugerencias Optimizadas** | Genera varias variantes de título coherentes con tu video, descripción completa y pack de tags bajo el límite de 500 caracteres de YouTube Studio. Con Gemini se redactan con IA. |
+| **Análisis Multimodal (opcional)** | Con clave de Gemini, sube tu miniatura o clip: identifica el tipo de contenido y evalúa contraste, legibilidad y CTR sin cambiar el formato original. |
 
 ---
 
@@ -118,12 +147,18 @@ PORT=3000
 ```text
 ├── INICIAR_WINDOWS.bat        # Script de arranque para Windows con 1 clic
 ├── iniciar_mac_linux.sh       # Script de arranque para macOS / Linux
-├── server.ts                  # Servidor Express, scraper de YouTube y endpoints Gemini
+├── server.ts                  # Servidor Express y endpoints de la API
+├── server/
+│   ├── profile.ts             # Detección del tipo de video (música, género, formato, artista)
+│   ├── youtube.ts             # Lectura de datos públicos de YouTube (con varias vías de respaldo)
+│   ├── competitors.ts         # Recolección de videos competidores reales
+│   ├── benchmark.ts           # Matriz de etiquetas, estadísticas y sugerencias locales
+│   └── gemini.ts              # Uso opcional de Gemini
 ├── package.json               # Dependencias (React 19, Vite, Tailwind v4, XLSX, JSZip)
 ├── vite.config.ts             # Configuración del empaquetador Vite
-├── index.html                 # Punto de entrada HTML con soporte PWA
+├── index.html                 # Punto de entrada HTML
 ├── public/
-│   ├── manifest.json          # Web App Manifest para instalación de escritorio/móvil
+│   ├── manifest.json          # Web App Manifest
 │   └── icon.svg               # Icono de la aplicación TubePulse
 └── src/
     ├── App.tsx                # Flujo principal de la aplicación
@@ -131,18 +166,16 @@ PORT=3000
     ├── index.css              # Estilos Tailwind CSS
     ├── types/                 # Interfaces TypeScript
     ├── utils/
-    │   ├── exportHelpers.ts   # Exportación a Excel (.xlsx), Notepad (.txt) y CSV
-    │   └── usePWAInstall.ts   # Hook para instalación nativa de la app
+    │   └── exportHelpers.ts   # Exportación a Excel (.xlsx), Notepad (.txt) y CSV
     └── components/
-        ├── Header.tsx         # Barra superior con accesos a descargas y gráficas
-        ├── VideoInputSection.tsx  # Extractor de URL y editor de tags con medidor de 500 caracteres
+        ├── Header.tsx         # Barra superior
+        ├── VideoInputSection.tsx  # Extractor de URL, selector de tipo de video y editor de tags
         ├── AnalyticsCharts.tsx    # Gráficas interactivas de frecuencia y vistas
-        ├── CompetitorsGrid.tsx    # Cuadrícula de los 10 videos competidores
+        ├── CompetitorsGrid.tsx    # Cuadrícula de videos competidores
         ├── TagMatrixTable.tsx     # Tabla interactiva de popularidad y frecuencia
         ├── GeneratedSuggestions.tsx # Propuestas de títulos, descripciones y tags
-        ├── ExportToolbar.tsx      # Barra de exportación a Excel, Notepad y descarga
-        ├── DownloadAppModal.tsx   # Centro de descarga (GitHub, ZIP, PWA)
-        └── MultimodalModal.tsx    # Análisis de miniaturas con IA
+        ├── ExportToolbar.tsx      # Exportación a Excel y Notepad
+        └── MultimodalModal.tsx    # Análisis de miniaturas y clips con IA
 ```
 
 ---
