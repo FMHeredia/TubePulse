@@ -382,7 +382,75 @@ function collectVideoRenderers(node: any, out: any[]): void {
   }
 }
 
-/** Convierte el JSON de la página de resultados en una lista de videos. */
+function collectLockups(node: any, out: any[]): void {
+  if (!node || typeof node !== 'object') return;
+  if (Array.isArray(node)) {
+    for (const item of node) collectLockups(item, out);
+    return;
+  }
+  if (node.lockupViewModel?.contentId) out.push(node.lockupViewModel);
+  for (const key of Object.keys(node)) {
+    if (key === 'lockupViewModel') continue;
+    collectLockups(node[key], out);
+  }
+}
+
+function findBrowseId(node: any, depth = 0): string {
+  if (!node || typeof node !== 'object' || depth > 12) return '';
+  if (typeof node.browseId === 'string' && node.browseId.startsWith('UC')) return node.browseId;
+  for (const key of Object.keys(node)) {
+    const found = findBrowseId(node[key], depth + 1);
+    if (found) return found;
+  }
+  return '';
+}
+
+function findBadgeTexts(node: any, out: string[], depth = 0): void {
+  if (!node || typeof node !== 'object' || depth > 12) return;
+  if (Array.isArray(node)) {
+    for (const item of node) findBadgeTexts(item, out, depth + 1);
+    return;
+  }
+  if (typeof node.text === 'string') out.push(node.text);
+  for (const key of Object.keys(node)) findBadgeTexts(node[key], out, depth + 1);
+}
+
+/** Formato nuevo de YouTube: cada resultado es un "lockupViewModel". */
+function parseLockup(l: any): SearchResultVideo | null {
+  if (l.contentType && !/VIDEO/i.test(String(l.contentType))) return null;
+  if (/PLAYLIST|CHANNEL|MIX/i.test(String(l.contentType || ''))) return null;
+  const meta = l.metadata?.lockupMetadataViewModel;
+  if (!meta) return null;
+
+  const title: string = meta.title?.content || '';
+  const rows: any[] = meta.metadata?.contentMetadataViewModel?.metadataRows || [];
+  const parts: string[] = [];
+  const rowParts: string[][] = rows.map((r: any) =>
+    (r?.metadataParts || []).map((p: any) => String(p?.text?.content || '')).filter(Boolean)
+  );
+  for (const rp of rowParts) parts.push(...rp);
+
+  const viewsText = parts.find((t) => /visualiz|view|reproduc/i.test(t)) || '';
+  const publishedText = parts.find((t) => /hace\s+\d|\d+\s+\w+\s+ago/i.test(t)) || '';
+  const channel = (rowParts.find((rp) => rp.length > 0 && rp[0] !== viewsText && rp[0] !== publishedText) || [])[0] || '';
+
+  const badges: string[] = [];
+  findBadgeTexts(l.contentImage, badges);
+  const durationText = badges.find((t) => /^\d{1,2}:\d{2}(:\d{2})?$/.test(t.trim())) || '';
+
+  return {
+    videoId: l.contentId,
+    title,
+    channel,
+    channelId: findBrowseId(meta.image),
+    viewsNumeric: parseViewCount(viewsText),
+    publishedText,
+    ageDays: parseAgeDays(publishedText),
+    durationText,
+  };
+}
+
+/** Convierte el JSON de la página de resultados en una lista de videos (formato antiguo y nuevo). */
 export function parseSearchResults(initialData: any): SearchResultVideo[] {
   const renderers: any[] = [];
   collectVideoRenderers(initialData, renderers);
@@ -409,7 +477,35 @@ export function parseSearchResults(initialData: any): SearchResultVideo[] {
       durationText: textOf(r.lengthText),
     });
   }
+
+  const lockups: any[] = [];
+  collectLockups(initialData, lockups);
+  for (const l of lockups) {
+    if (!l.contentId || seen.has(l.contentId)) continue;
+    const parsed = parseLockup(l);
+    if (!parsed) continue;
+    seen.add(l.contentId);
+    results.push(parsed);
+  }
   return results;
+}
+
+/** Resumen de lo que había en la respuesta, para poder diagnosticar cuando no se encuentra nada. */
+function describeSearchData(data: any): string {
+  let raw = '';
+  try {
+    raw = JSON.stringify(data) || '';
+  } catch {
+    return 'respuesta ilegible';
+  }
+  const count = (needle: string) => raw.split(needle).length - 1;
+  const bits = [
+    `videoRenderer×${count('"videoRenderer"')}`,
+    `lockupViewModel×${count('"lockupViewModel"')}`,
+    `reelItem×${count('"reelItemRenderer"')}`,
+  ];
+  if (/"messageRenderer"|did not match any|no coincide/i.test(raw)) bits.push('YouTube indica que no hay coincidencias');
+  return bits.join(', ');
 }
 
 export type Timeframe = '2_weeks' | '1_month' | '3_months' | string;
@@ -450,7 +546,12 @@ async function searchViaInnerTube(query: string, params: string): Promise<Search
       lastFetchProblem = `La API interna de YouTube respondió con el código ${res.status}`;
       return [];
     }
-    return parseSearchResults(await res.json());
+    const json = await res.json();
+    const parsed = parseSearchResults(json);
+    if (parsed.length === 0) {
+      lastFetchProblem = `La API interna de YouTube no devolvió videos reconocibles (${describeSearchData(json)})`;
+    }
+    return parsed;
   } catch (e: any) {
     lastFetchProblem = `No hubo conexión con YouTube (${e?.cause?.code || e?.name || 'error de red'})`;
     return [];
@@ -469,7 +570,9 @@ export async function searchYouTubeVideos(query: string, timeframe: Timeframe): 
     const data = extractJsonAfter(html, ['var ytInitialData = ', 'window["ytInitialData"] = ', 'ytInitialData = ']);
     const results = data ? parseSearchResults(data) : [];
     if (results.length > 0) return results;
-    lastFetchProblem = 'La página de YouTube llegó sin lista de resultados';
+    lastFetchProblem = data
+      ? `La página de YouTube llegó sin videos reconocibles (${describeSearchData(data)})`
+      : 'La página de YouTube llegó sin datos de resultados (posible bloqueo o consentimiento)';
   }
 
   // Vía 2: API interna de YouTube
