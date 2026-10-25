@@ -1058,6 +1058,20 @@ FUNCIONES PRINCIPALES:
   }
 });
 
+// Endpoint: Get README.md content
+app.get('/api/readme', (req, res) => {
+  try {
+    const readmePath = path.join(__dirname, 'README.md');
+    if (fs.existsSync(readmePath)) {
+      const content = fs.readFileSync(readmePath, 'utf8');
+      return res.type('text/markdown').send(content);
+    }
+    return res.status(404).send('README.md no encontrado.');
+  } catch (err: any) {
+    return res.status(500).send('Error leyendo README: ' + err.message);
+  }
+});
+
 // Configure Vite integration
 async function setupVite() {
   const isProduction = process.env.NODE_ENV === 'production';
