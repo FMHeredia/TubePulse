@@ -84,7 +84,23 @@ Para ejecutar TubePulse en local sólo necesitas:
 
 ## 🔑 Configuración de Variables de Entorno (Opcional)
 
-TubePulse funciona **sin ninguna clave**: lee los videos competidores directamente de YouTube y genera las sugerencias en tu propio equipo. La clave de Gemini es opcional y añade:
+### Clave de YouTube (muy recomendada)
+
+YouTube bloquea con frecuencia la lectura automática de sus páginas. Con una clave de la **API oficial de YouTube** (gratuita) la comparativa funciona siempre:
+
+1. Entra en [console.cloud.google.com](https://console.cloud.google.com) y crea un proyecto.
+2. Activa **YouTube Data API v3** (menú *APIs y servicios* → *Biblioteca*).
+3. Ve a *Credenciales* → *Crear credenciales* → *Clave de API* y cópiala.
+4. Pégala en tu `.env`:
+```env
+YOUTUBE_API_KEY="AIza..."
+```
+
+La cuota gratuita permite unos 90 análisis al día.
+
+### Clave de Gemini (opcional)
+
+La clave de Gemini añade:
 
 * Redacción de sugerencias con IA (siempre respetando el tipo de tu video).
 * Respaldo para encontrar competidores si YouTube no responde.
@@ -123,7 +139,7 @@ Si aparece el aviso *«No se pudieron leer videos competidores reales de YouTube
 | No hubo conexión con YouTube | Revisa tu internet, antivirus o firewall. |
 | YouTube respondió con el código 429 o 403 | Bloqueo temporal por demasiadas consultas. Espera unos minutos. |
 
-El programa intenta tres vías en orden: la página de resultados (con varias cookies de consentimiento), la API interna de YouTube y una búsqueda sin filtro de fecha. Con clave de Gemini hay un cuarto respaldo.
+Con `YOUTUBE_API_KEY` se usa primero la API oficial. Sin ella (o si falla) se intentan la página de resultados, la API interna de YouTube y una búsqueda sin filtro de fecha. Con clave de Gemini hay un último respaldo. **La solución más estable es configurar `YOUTUBE_API_KEY`.**
 
 ---
 
