@@ -64,7 +64,7 @@ export const MultimodalModal: React.FC<MultimodalModalProps> = ({
           mediaBase64: previewUrl,
           mimeType: file.type,
           type: fileType === 'image' ? 'thumbnail' : 'video',
-          videoTopic: videoTopic || 'Música tecno o contenido creativo',
+          videoTopic: videoTopic || '',
         }),
       });
 
@@ -199,11 +199,22 @@ export const MultimodalModal: React.FC<MultimodalModalProps> = ({
                 </div>
                 <div className="flex items-baseline space-x-1">
                   <span className="text-2xl font-black text-amber-400">
-                    {analysis.ctrScore || analysis.retentionScore || 85}
+                    {analysis.ctrScore ?? analysis.retentionScore ?? '—'}
                   </span>
                   <span className="text-xs text-slate-400">/ 100</span>
                 </div>
               </div>
+
+              {analysis.detectedContentType && (
+                <div className="p-3 bg-purple-950/30 rounded-xl border border-purple-800/40 text-xs text-purple-200">
+                  <span className="font-semibold">Tipo de contenido reconocido: </span>
+                  {analysis.detectedContentType}
+                  <span className="block text-[11px] text-purple-300/70 mt-0.5">
+                    Las recomendaciones mantienen este mismo tipo de contenido. Si no es correcto, indícalo en el título
+                    de tu video y vuelve a analizar.
+                  </span>
+                </div>
+              )}
 
               <div className="p-3 bg-slate-950/60 rounded-xl border border-slate-800 text-xs text-slate-300">
                 <p className="font-semibold text-slate-200 mb-1">Diagnóstico:</p>

@@ -1,17 +1,12 @@
 import React from 'react';
-import { Youtube, Sparkles, TrendingUp, Clock, FileSpreadsheet, FileText, Download, BarChart2 } from 'lucide-react';
+import { Youtube, Clock, BarChart2 } from 'lucide-react';
 
 interface HeaderProps {
-  onOpenDownloadModal: () => void;
   hasResults?: boolean;
   onScrollToCharts?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({
-  onOpenDownloadModal,
-  hasResults,
-  onScrollToCharts,
-}) => {
+export const Header: React.FC<HeaderProps> = ({ hasResults, onScrollToCharts }) => {
   return (
     <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-40 backdrop-blur-md bg-opacity-95">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
@@ -46,17 +41,6 @@ export const Header: React.FC<HeaderProps> = ({
               <span>Ver Gráficas</span>
             </button>
           )}
-
-          {/* Download App Button */}
-          <button
-            type="button"
-            onClick={onOpenDownloadModal}
-            className="flex items-center space-x-2 px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold shadow-md shadow-red-600/30 transition transform hover:-translate-y-0.5"
-            title="Descargar el programa para tu PC o instalar como app"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Descargar Programa</span>
-          </button>
         </div>
       </div>
     </header>

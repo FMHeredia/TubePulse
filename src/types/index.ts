@@ -3,12 +3,36 @@ export interface UserVideo {
   description: string;
   tags: string[];
   channelName: string;
+  channelId?: string;
   url?: string;
   videoId?: string;
   thumbnail?: string;
   uploadDate?: string;
   viewCount?: string;
+  /** Categoría que YouTube asigna al video (ej. "Music"). Se rellena al extraer la URL. */
+  category?: string;
+  durationSeconds?: number;
 }
+
+/** Cómo se ha clasificado el video del usuario (se muestra en pantalla para que se pueda comprobar). */
+export interface ContentProfile {
+  kind: 'music' | 'general';
+  kindLabel: string;
+  /** Género musical detectado (solo música). */
+  genre?: string;
+  /** Formato detectado tal como aparece en el video (ej. "Official Video", "Lyric Video", "Live"). */
+  format?: string;
+  artist?: string;
+  song?: string;
+  language: 'es' | 'en';
+  confidence: 'alta' | 'media' | 'baja';
+  /** Pistas que llevaron a esta clasificación. */
+  signals: string[];
+  /** true si el usuario forzó el tipo manualmente. */
+  manual?: boolean;
+}
+
+export type ContentTypeOverride = 'auto' | 'music' | 'general';
 
 export interface CompetitorVideo {
   rank: number;
@@ -18,6 +42,8 @@ export interface CompetitorVideo {
   viewsNumeric?: number;
   published: string;
   url: string;
+  videoId?: string;
+  thumbnail?: string;
   tags: string[];
   descriptionSummary: string;
   keySuccessFactor: string;
@@ -83,6 +109,12 @@ export interface BenchmarkResult {
     timeframe: string;
     totalVideosAnalyzed: number;
   };
+  /** Cómo se clasificó tu video (música, género, formato...). */
+  contentProfile?: ContentProfile;
+  /** De dónde salen los competidores: YouTube directo, Gemini con búsqueda, o ninguno. */
+  dataSource?: 'youtube' | 'gemini' | 'none';
+  /** Avisos para mostrar al usuario (por ejemplo, si no se pudieron obtener competidores reales). */
+  warnings?: string[];
   userVideoAnalysis: {
     titleLength: number;
     tagsCount: number;
@@ -101,6 +133,8 @@ export interface MultimodalAnalysis {
   ctrScore?: number;
   retentionScore?: number;
   summary: string;
+  /** Tipo de contenido que la IA reconoce en el archivo (ej. "Videoclip musical"). */
+  detectedContentType?: string;
   strengths?: string[];
   weaknesses?: string[];
   improvements?: string[];

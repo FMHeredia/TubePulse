@@ -12,56 +12,23 @@ import { GeneratedSuggestions } from './components/GeneratedSuggestions';
 import { ExportToolbar } from './components/ExportToolbar';
 import { MultimodalModal } from './components/MultimodalModal';
 import { AnalyticsCharts } from './components/AnalyticsCharts';
-import { DownloadAppModal } from './components/DownloadAppModal';
-import { UserVideo, BenchmarkResult } from './types';
-import {
-  TrendingUp,
-  AlertCircle,
-  Sparkles,
-  Info,
-  Youtube,
-  FileSpreadsheet,
-  FileText,
-  CheckCircle,
-  Download,
-  BarChart2,
-} from 'lucide-react';
+import { UserVideo, BenchmarkResult, ContentTypeOverride } from './types';
+import { AlertCircle, FileSpreadsheet, CheckCircle, Music, Info } from 'lucide-react';
+
+const EMPTY_VIDEO: UserVideo = {
+  title: '',
+  channelName: '',
+  description: '',
+  tags: [],
+};
 
 export default function App() {
-  const [userVideo, setUserVideo] = useState<UserVideo>({
-    title: 'Melodic Techno Live Set 2025 | Deep Modular Synth & Underground Beats',
-    channelName: 'PulseWave Music',
-    description: `Sesión de música techno melódica grabada en directo con sintetizadores modulares analógicos y ritmos a 128 BPM.
-Grabado en estudio para clubbing, sesiones nocturnas y concentración.
-
-Tracklist:
-00:00 Intro Atmospheric
-04:20 Modular Drift
-09:15 Neon Peak
-16:40 Dark Outro
-
-Suscríbete al canal para sesiones semanales de música electrónica underground.
-#Techno #MelodicTechno #LiveSet`,
-    tags: [
-      'techno',
-      'melodic techno',
-      'techno mix 2025',
-      'electronic music',
-      'dark techno',
-      'techno live set',
-      'underground techno',
-      'synthesizer session',
-    ],
-    thumbnail: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=600&auto=format&fit=crop&q=80',
-    uploadDate: '2025-10-15',
-    viewCount: '2,340 vistas',
-  });
+  const [userVideo, setUserVideo] = useState<UserVideo>(EMPTY_VIDEO);
 
   const [benchmarkResult, setBenchmarkResult] = useState<BenchmarkResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isMultimodalOpen, setIsMultimodalOpen] = useState(false);
-  const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const chartsRef = useRef<HTMLDivElement>(null);
@@ -78,7 +45,8 @@ Suscríbete al canal para sesiones semanales de música electrónica underground
   const handleAnalyze = async (
     customQuery?: string,
     enableThinking = true,
-    timeframe = '1_month'
+    timeframe = '1_month',
+    contentType: ContentTypeOverride = 'auto'
   ) => {
     setIsLoading(true);
     setError(null);
@@ -93,6 +61,7 @@ Suscríbete al canal para sesiones semanales de música electrónica underground
           enableThinking,
           timeframe,
           competitorCount: 10,
+          contentType,
         }),
       });
 
@@ -103,7 +72,12 @@ Suscríbete al canal para sesiones semanales de música electrónica underground
 
       const data: BenchmarkResult = await response.json();
       setBenchmarkResult(data);
-      showToast('¡Benchmark completado! Se analizaron 10 videos populares de la competencia.');
+      const n = data.competitors.length;
+      showToast(
+        n > 0
+          ? `¡Benchmark completado! Se analizaron ${n} videos reales de la competencia.`
+          : 'Análisis completado, pero no se pudieron leer videos competidores.'
+      );
     } catch (err: any) {
       console.error(err);
       setError(
@@ -153,14 +127,12 @@ Suscríbete al canal para sesiones semanales de música electrónica underground
     showToast('Pack de etiquetas de YouTube Studio aplicado a tu video.');
   };
 
+  const profile = benchmarkResult?.contentProfile;
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-red-600 selection:text-white">
       {/* Top Header */}
-      <Header
-        onOpenDownloadModal={() => setIsDownloadModalOpen(true)}
-        hasResults={!!benchmarkResult}
-        onScrollToCharts={scrollToCharts}
-      />
+      <Header hasResults={!!benchmarkResult} onScrollToCharts={scrollToCharts} />
 
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -175,22 +147,14 @@ Suscríbete al canal para sesiones semanales de música electrónica underground
                 Supera a tu competencia con datos de los videos más populares del último mes
               </h2>
               <p className="text-xs text-slate-300 leading-relaxed">
-                Pega tu video o ingresa tu metadata. Buscaremos 10 videos similares recientes (&lt; 30 días) de otros
+                Pega tu video o ingresa tu metadata. Buscaremos videos similares recientes (&lt; 30 días) de otros
                 canales, extraeremos qué etiquetas y patrones tienen en común, y te generaremos la tabla comparativa
-                en <strong>Excel</strong> y <strong>Notepad</strong> con gráficas interactivas y títulos optimizados.
+                en <strong>Excel</strong> y <strong>Notepad</strong> con gráficas interactivas y opciones de título
+                que respetan el tipo de tu video.
               </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-              <button
-                type="button"
-                onClick={() => setIsDownloadModalOpen(true)}
-                className="flex items-center space-x-2 text-xs font-bold text-white bg-red-600 hover:bg-red-500 px-3.5 py-2 rounded-xl shadow-lg shadow-red-600/30 transition transform hover:-translate-y-0.5"
-              >
-                <Download className="w-4 h-4" />
-                <span>Descargar Programa</span>
-              </button>
-
               <div className="flex items-center space-x-2 text-xs text-slate-300 bg-slate-900/80 px-3 py-2 rounded-xl border border-slate-800">
                 <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
                 <span>Excel & Notepad</span>
@@ -225,11 +189,11 @@ Suscríbete al canal para sesiones semanales de música electrónica underground
             <div className="w-12 h-12 border-4 border-red-500/20 border-t-red-500 rounded-full animate-spin mx-auto" />
             <div className="space-y-1.5">
               <h3 className="text-base font-bold text-white">
-                Rastreando YouTube: Buscando los 10 mejores videos de la competencia
+                Rastreando YouTube: buscando los videos más populares de la competencia
               </h3>
               <p className="text-xs text-slate-400 max-w-lg mx-auto">
-                Filtrando contenido de otros canales con menos de 1 mes de antigüedad, calculando co-ocurrencia de
-                etiquetas, matrices de popularidad, gráficas estadísticas y generando propuestas con IA...
+                Filtrando contenido de otros canales con menos de 1 mes de antigüedad, leyendo sus etiquetas reales,
+                calculando la matriz de popularidad y preparando propuestas coherentes con tu video...
               </p>
             </div>
           </div>
@@ -238,11 +202,45 @@ Suscríbete al canal para sesiones semanales de música electrónica underground
         {/* Results Area */}
         {benchmarkResult && (
           <div className="space-y-8 animate-in fade-in duration-500">
+            {/* How the video was classified + warnings */}
+            {profile && (
+              <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 text-xs text-slate-300 flex items-start space-x-3">
+                <Music className="w-5 h-5 text-purple-400 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="font-semibold text-slate-100">
+                    Tipo de video detectado: {profile.kindLabel}
+                    {profile.genre ? ` · ${profile.genre}` : ''}
+                    {profile.format ? ` · ${profile.format}` : ''}
+                    <span className="ml-2 text-[11px] font-normal text-slate-400">(confianza {profile.confidence})</span>
+                  </p>
+                  {profile.kind === 'music' && (profile.artist || profile.song) && (
+                    <p className="text-slate-400">
+                      Artista: <strong className="text-slate-200">{profile.artist || '—'}</strong> · Canción:{' '}
+                      <strong className="text-slate-200">{profile.song || '—'}</strong>
+                    </p>
+                  )}
+                  <p className="text-slate-400">
+                    Todas las sugerencias mantienen este tipo de contenido. Si no es correcto, cambia «Tipo de video»
+                    en el Paso 1 y vuelve a analizar.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {benchmarkResult.warnings?.map((warning, idx) => (
+              <div
+                key={idx}
+                className="p-4 rounded-xl bg-amber-950/30 border border-amber-800/50 text-xs text-amber-200 flex items-start space-x-3"
+              >
+                <Info className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                <p>{warning}</p>
+              </div>
+            ))}
+
             {/* Top Export Bar */}
             <ExportToolbar
               benchmark={benchmarkResult}
               userVideo={userVideo}
-              onOpenDownloadModal={() => setIsDownloadModalOpen(true)}
               onScrollToCharts={scrollToCharts}
             />
 
@@ -255,10 +253,11 @@ Suscríbete al canal para sesiones semanales de música electrónica underground
               />
             </div>
 
-            {/* Step 2: Competitors 10 Videos Grid */}
+            {/* Step 2: Competitors Grid */}
             <CompetitorsGrid
               competitors={benchmarkResult.competitors}
               queryUsed={benchmarkResult.searchContext.queryUsed}
+              timeframeLabel={benchmarkResult.searchContext.timeframe}
             />
 
             {/* Step 3: Comparative Tag Matrix Table */}
@@ -269,7 +268,7 @@ Suscríbete al canal para sesiones semanales de música electrónica underground
               onAddMultipleTagsToUser={handleAddMultipleTagsToUser}
             />
 
-            {/* Step 4: AI Optimized Suggestions */}
+            {/* Step 4: Optimized Suggestions */}
             <GeneratedSuggestions
               suggestions={benchmarkResult.optimizedSuggestions}
               currentSeoScore={benchmarkResult.userVideoAnalysis.seoScoreCurrent}
@@ -282,7 +281,6 @@ Suscríbete al canal para sesiones semanales de música electrónica underground
             <ExportToolbar
               benchmark={benchmarkResult}
               userVideo={userVideo}
-              onOpenDownloadModal={() => setIsDownloadModalOpen(true)}
               onScrollToCharts={scrollToCharts}
             />
           </div>
@@ -293,15 +291,9 @@ Suscríbete al canal para sesiones semanales de música electrónica underground
       <MultimodalModal
         isOpen={isMultimodalOpen}
         onClose={() => setIsMultimodalOpen(false)}
-        videoTopic={userVideo.title || 'Música tecno'}
+        videoTopic={userVideo.title}
         onApplyVisualTags={(tags) => handleAddMultipleTagsToUser(tags)}
         onApplyDescriptionDraft={(draft) => setUserVideo({ ...userVideo, description: draft })}
-      />
-
-      {/* Download Program Modal */}
-      <DownloadAppModal
-        isOpen={isDownloadModalOpen}
-        onClose={() => setIsDownloadModalOpen(false)}
       />
 
       {/* Floating Toast Notification */}

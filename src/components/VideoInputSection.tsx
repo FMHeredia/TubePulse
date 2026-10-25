@@ -8,19 +8,22 @@ import {
   User,
   Sliders,
   Play,
-  RotateCcw,
-  Zap,
   Image as ImageIcon,
   CheckCircle,
   AlertTriangle,
   Info,
 } from 'lucide-react';
-import { UserVideo } from '../types';
+import { UserVideo, ContentProfile, ContentTypeOverride } from '../types';
 
 interface VideoInputSectionProps {
   userVideo: UserVideo;
   onChangeUserVideo: (updated: UserVideo) => void;
-  onAnalyze: (customQuery?: string, enableThinking?: boolean, timeframe?: string) => void;
+  onAnalyze: (
+    customQuery?: string,
+    enableThinking?: boolean,
+    timeframe?: string,
+    contentType?: ContentTypeOverride
+  ) => void;
   isLoading: boolean;
   onOpenMultimodal: () => void;
 }
@@ -42,6 +45,8 @@ export const VideoInputSection: React.FC<VideoInputSectionProps> = ({
   const [customSearchQuery, setCustomSearchQuery] = useState('');
   const [timeframe, setTimeframe] = useState('1_month');
   const [enableThinking, setEnableThinking] = useState(true);
+  const [contentType, setContentType] = useState<ContentTypeOverride>('auto');
+  const [detectedProfile, setDetectedProfile] = useState<ContentProfile | null>(null);
 
   // Calculate tags total characters for YouTube 500 limit
   const tagsString = userVideo.tags.join(', ');
@@ -65,7 +70,7 @@ export const VideoInputSection: React.FC<VideoInputSectionProps> = ({
       const res = await fetch('/api/youtube/fetch-video', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: youtubeUrlInput.trim() }),
+        body: JSON.stringify({ url: youtubeUrlInput.trim(), contentType }),
       });
 
       if (!res.ok) {
@@ -79,6 +84,9 @@ export const VideoInputSection: React.FC<VideoInputSectionProps> = ({
         description: data.description || userVideo.description,
         tags: data.tags && data.tags.length > 0 ? data.tags : userVideo.tags,
         channelName: data.channelName || userVideo.channelName,
+        channelId: data.channelId || undefined,
+        category: data.category || undefined,
+        durationSeconds: data.durationSeconds || undefined,
         url: data.url || youtubeUrlInput,
         videoId: data.videoId,
         thumbnail: data.thumbnail,
@@ -86,6 +94,7 @@ export const VideoInputSection: React.FC<VideoInputSectionProps> = ({
         viewCount: data.viewCount,
       });
 
+      setDetectedProfile(data.contentProfile || null);
       setUrlFetchSuccess(true);
       setTimeout(() => setUrlFetchSuccess(false), 4000);
     } catch (err: any) {
@@ -119,40 +128,6 @@ export const VideoInputSection: React.FC<VideoInputSectionProps> = ({
     });
   };
 
-  const handleLoadTechnoPreset = () => {
-    onChangeUserVideo({
-      title: 'Dark Melodic Techno Mix 2025 | Live Modular Synth & Deep Bass Set',
-      description: `Sesión de música techno melódica grabada en directo con sintetizadores modulares analógicos y percusión analógica. 
-Sumérgete en un viaje sonoro espacial con transiciones fluidas y ritmos de 128 BPM diseñados para clubes y sesiones nocturnas.
-
-Tracklist & Capítulos:
-00:00 Intro - Atmospheric Drift
-03:45 Subterranean Pulse (Original Mix)
-08:20 Neon Shadows (Club Edit)
-14:10 Modular Eclipse (Live Jam)
-21:30 Deep Horizon - Outro
-
-Disfruta de este set de música tecno original y suscríbete para más lanzamientos semanales.
-#Techno #MelodicTechno #DarkTechno #ModularSynth #TechnoMix2025`,
-      tags: [
-        'techno',
-        'melodic techno',
-        'techno mix 2025',
-        'dark techno',
-        'techno live set',
-        'electronic music',
-        'underground techno',
-        'club mix',
-        'modular synth techno',
-      ],
-      channelName: 'PulseWave Sound Lab',
-      thumbnail: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=600&auto=format&fit=crop&q=80',
-      viewCount: '1,420 vistas',
-      uploadDate: '2025-10-10',
-    });
-    setCustomSearchQuery('melodic techno mix live set');
-  };
-
   return (
     <div className="bg-slate-900/90 rounded-2xl border border-slate-800 p-5 lg:p-6 shadow-xl space-y-6">
       {/* Top Banner & Preset Action */}
@@ -163,21 +138,11 @@ Disfruta de este set de música tecno original y suscríbete para más lanzamien
             <span>Paso 1: Configura o Extrae tu Video de YouTube</span>
           </h2>
           <p className="text-xs text-slate-400 mt-0.5">
-            Ingresa el enlace de tu video o completa los campos manualmente para auditar su metadata
+            Pega el enlace de tu video (recomendado) o completa los campos manualmente para auditar su metadata
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={handleLoadTechnoPreset}
-            className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-600/30 transition flex items-center space-x-1.5"
-            title="Cargar ejemplo de música tecno mencionado en tu solicitud"
-          >
-            <Zap className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Cargar Ejemplo "Música Tecno"</span>
-          </button>
-
           <button
             type="button"
             onClick={onOpenMultimodal}
@@ -244,6 +209,40 @@ Disfruta de este set de música tecno original y suscríbete para más lanzamien
         )}
       </div>
 
+      {/* Content type: auto-detected, with manual override */}
+      <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div className="text-xs space-y-0.5">
+          <p className="font-semibold text-slate-200 flex items-center space-x-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+            <span>Tipo de video</span>
+          </p>
+          {detectedProfile ? (
+            <p className="text-slate-400">
+              Detectado al extraer la URL:{' '}
+              <strong className="text-slate-200">
+                {detectedProfile.kindLabel}
+                {detectedProfile.genre ? ` · ${detectedProfile.genre}` : ''}
+                {detectedProfile.format ? ` · ${detectedProfile.format}` : ''}
+              </strong>
+            </p>
+          ) : (
+            <p className="text-slate-400">
+              Se detecta solo a partir del título, etiquetas y descripción. Cámbialo si no acierta.
+            </p>
+          )}
+        </div>
+        <select
+          value={contentType}
+          onChange={(e) => setContentType(e.target.value as ContentTypeOverride)}
+          className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-red-500"
+          aria-label="Tipo de video"
+        >
+          <option value="auto">Detectar automáticamente</option>
+          <option value="music">Es un video de música</option>
+          <option value="general">Es otro tipo de contenido</option>
+        </select>
+      </div>
+
       {/* Main Metadata Form Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Left Column: Title & Channel */}
@@ -276,7 +275,7 @@ Disfruta de este set de música tecno original y suscríbete para más lanzamien
               type="text"
               value={userVideo.title}
               onChange={(e) => onChangeUserVideo({ ...userVideo, title: e.target.value })}
-              placeholder="Ej: Dark Melodic Techno Mix 2025 | Live Synthesizer Session"
+              placeholder="Ej: Artista - Canción (Official Video)"
               className="w-full bg-slate-950/80 border border-slate-700/80 rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-red-500 transition"
             />
           </div>
@@ -318,7 +317,7 @@ Disfruta de este set de música tecno original y suscríbete para más lanzamien
                 type="text"
                 value={customSearchQuery}
                 onChange={(e) => setCustomSearchQuery(e.target.value)}
-                placeholder="Ej: música tecno o techno mix set"
+                placeholder="Ej: reggaetón official video"
                 className="w-full bg-slate-950/80 border border-slate-700/80 rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-red-500 transition"
               />
               <p className="text-[11px] text-slate-400">
@@ -403,7 +402,7 @@ Disfruta de este set de música tecno original y suscríbete para más lanzamien
                     handleAddTag();
                   }
                 }}
-                placeholder="Añadir etiqueta (ej: melodic techno) y presiona Enter"
+                placeholder="Añadir etiqueta y presiona Enter"
                 className="flex-1 bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-1.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-red-500"
               />
               <button
@@ -523,7 +522,7 @@ Disfruta de este set de música tecno original y suscríbete para más lanzamien
       <div className="pt-2">
         <button
           type="button"
-          onClick={() => onAnalyze(customSearchQuery, enableThinking, timeframe)}
+          onClick={() => onAnalyze(customSearchQuery, enableThinking, timeframe, contentType)}
           disabled={isLoading || (!userVideo.title.trim() && userVideo.tags.length === 0)}
           className="w-full py-4 px-6 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-500 hover:via-rose-500 hover:to-red-600 text-white font-bold text-base shadow-xl shadow-red-600/30 flex items-center justify-center space-x-3 transition transform active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
         >
