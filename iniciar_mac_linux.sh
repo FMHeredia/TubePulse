@@ -12,9 +12,9 @@ if ! command -v node &> /dev/null; then
 fi
 
 # Instalar dependencias si no existen
-if [ ! -d "node_modules" ]; then
-    echo "[1/2] Instalando dependencias con npm install..."
-    npm install
+if [ ! -d "node_modules" ] || [ ! -d "node_modules/tsx" ]; then
+    echo "[1/2] Instalando dependencias con npm install --legacy-peer-deps..."
+    npm install --legacy-peer-deps
 fi
 
 echo "[2/2] Iniciando servidor en http://localhost:3000..."
@@ -25,4 +25,4 @@ elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
     xdg-open http://localhost:3000 &> /dev/null &
 fi
 
-npm run dev
+npx tsx server.ts

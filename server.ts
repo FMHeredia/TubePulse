@@ -965,38 +965,39 @@ app.get('/api/download-app-zip', async (req, res) => {
 
     // Add convenient Windows Batch launcher
     const windowsLauncher = `@echo off
+title TubePulse - Optimizador de YouTube
 echo ===================================================================
 echo     Iniciando TubePulse - Optimizador de YouTube y Benchmark
 echo ===================================================================
 echo.
-if not exist node_modules (
-  echo [1/3] Instalando dependencias de Node.js por primera vez...
-  call npm install
-  if %errorlevel% neq 0 (
-    echo Error durante npm install. Asegurate de tener Node.js instalado desde https://nodejs.org
-    pause
-    exit /b %errorlevel%
-  )
+if not exist "node_modules\" (
+  echo [1/3] Instalando dependencias necesarias con npm install...
+  call npm install --legacy-peer-deps
+) else if not exist "node_modules\\tsx\\" (
+  echo [1/3] Instalando paquete tsx...
+  call npm install --legacy-peer-deps
 )
-echo [2/3] Arrancando servidor local de TubePulse...
-echo [3/3] Abriendo http://localhost:3000 en tu navegador...
+echo [2/3] Abriendo TubePulse en tu navegador (http://localhost:3000)...
+timeout /t 2 /nobreak >nul
 start http://localhost:3000
-npm run dev
+echo [3/3] Iniciando servidor...
+call npx tsx server.ts
 pause
 `;
     zip.file('INICIAR_WINDOWS.bat', windowsLauncher);
+    zip.file('INICIAR_PROGRAMA.bat', windowsLauncher);
 
     // Add macOS / Linux shell script
     const macLinuxLauncher = `#!/bin/bash
 echo "==================================================================="
 echo "    Iniciando TubePulse - Optimizador de YouTube y Benchmark"
 echo "==================================================================="
-if [ ! -d "node_modules" ]; then
-  echo "Instalando dependencias de Node.js..."
-  npm install
+if [ ! -d "node_modules" ] || [ ! -d "node_modules/tsx" ]; then
+  echo "Instalando dependencias con npm install --legacy-peer-deps..."
+  npm install --legacy-peer-deps
 fi
 echo "Iniciando servidor en http://localhost:3000..."
-npm run dev
+npx tsx server.ts
 `;
     zip.file('iniciar_mac_linux.sh', macLinuxLauncher);
 
