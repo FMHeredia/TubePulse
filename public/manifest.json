@@ -1,0 +1,25 @@
+{
+  "id": "/",
+  "name": "TubePulse - Optimizador de YouTube",
+  "short_name": "TubePulse",
+  "description": "Analiza tu video de YouTube, benchmarks de competidores y genera títulos y tags virales",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "theme_color": "#dc2626",
+  "background_color": "#020617",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

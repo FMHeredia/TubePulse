@@ -1,0 +1,6 @@
+{
+  "name": "TubePulse - Optimizador y Análisis Competitivo de YouTube",
+  "description": "Analiza tu video de YouTube, encuentra videos similares y populares recientes (< 1 mes), compara etiquetas y patrones en Excel/Notepad, y genera títulos, descripciones y etiquetas optimizadas.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
