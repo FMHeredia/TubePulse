@@ -15,14 +15,12 @@ import {
 interface ExportToolbarProps {
   benchmark: BenchmarkResult;
   userVideo: UserVideo;
-  onOpenDownloadModal?: () => void;
   onScrollToCharts?: () => void;
 }
 
 export const ExportToolbar: React.FC<ExportToolbarProps> = ({
   benchmark,
   userVideo,
-  onOpenDownloadModal,
   onScrollToCharts,
 }) => {
   const [copied, setCopied] = useState(false);
@@ -44,27 +42,16 @@ export const ExportToolbar: React.FC<ExportToolbarProps> = ({
           <div className="flex items-center space-x-2">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
             <h3 className="text-sm font-bold text-white flex items-center space-x-1.5">
-              <span>Exportar Informe, Gráficas y Programa</span>
+              <span>Exportar Informe</span>
             </h3>
           </div>
           <p className="text-xs text-slate-300">
-            Descarga la tabla comparativa en formato <strong>Excel (.xlsx)</strong>, <strong>Notepad (.txt)</strong> o
-            descarga el <strong>programa completo</strong> para tu ordenador.
+            Guarda la tabla comparativa y las sugerencias en formato <strong>Excel (.xlsx)</strong>,{' '}
+            <strong>Notepad (.txt)</strong> o <strong>CSV</strong>.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {onOpenDownloadModal && (
-            <button
-              type="button"
-              onClick={onOpenDownloadModal}
-              className="px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold text-xs flex items-center space-x-2 shadow-lg shadow-red-600/30 transition transform hover:-translate-y-0.5"
-            >
-              <Download className="w-4 h-4" />
-              <span>Descargar Programa</span>
-            </button>
-          )}
-
           {/* Download Excel */}
           <button
             type="button"

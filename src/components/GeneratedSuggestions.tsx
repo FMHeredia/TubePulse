@@ -51,8 +51,8 @@ export const GeneratedSuggestions: React.FC<GeneratedSuggestionsProps> = ({
             </h2>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Metadata generada a partir de los patrones, palabras clave y etiquetas con mejor rendimiento en los 10 videos
-            competidores.
+            Metadata generada a partir de tu propio video y de los patrones, palabras clave y etiquetas de los videos
+            competidores reales. Todas las opciones mantienen la misma lógica de tu video (mismo contenido y formato).
           </p>
         </div>
 
@@ -81,10 +81,10 @@ export const GeneratedSuggestions: React.FC<GeneratedSuggestionsProps> = ({
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold text-slate-200 flex items-center space-x-2">
             <TrendingUp className="w-4 h-4 text-red-400" />
-            <span>Sugerencias de Título Optimizadas (4 Fórmulas Comprobadas)</span>
+            <span>Sugerencias de Título ({suggestions.titles.length} opciones con enfoques distintos)</span>
           </h3>
           <span className="text-[11px] text-slate-400">
-            Optimizados para alta retención y visibilidad móvil (&lt; 70 caracteres)
+            Todas describen el mismo video · máximo 100 caracteres (ideal &lt; 70 para móvil)
           </span>
         </div>
 
@@ -372,7 +372,7 @@ export const GeneratedSuggestions: React.FC<GeneratedSuggestionsProps> = ({
               >
                 <span className="font-bold text-amber-400 block">{adv.aspect}</span>
                 <p className="text-slate-400">
-                  <strong className="text-slate-300">Tendencia en los 10 mejores: </strong>
+                  <strong className="text-slate-300">Referencia: </strong>
                   {adv.competitorTrend}
                 </p>
                 <p className="text-slate-200">

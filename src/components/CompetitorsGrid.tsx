@@ -5,9 +5,14 @@ import { ExternalLink, Eye, Calendar, Award, Tag, Search, CheckCircle2 } from 'l
 interface CompetitorsGridProps {
   competitors: CompetitorVideo[];
   queryUsed: string;
+  timeframeLabel?: string;
 }
 
-export const CompetitorsGrid: React.FC<CompetitorsGridProps> = ({ competitors, queryUsed }) => {
+export const CompetitorsGrid: React.FC<CompetitorsGridProps> = ({
+  competitors,
+  queryUsed,
+  timeframeLabel = '< 1 Mes',
+}) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedVideo, setSelectedVideo] = useState<CompetitorVideo | null>(null);
 
@@ -26,7 +31,7 @@ export const CompetitorsGrid: React.FC<CompetitorsGridProps> = ({ competitors, q
           <div className="flex items-center space-x-2">
             <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
             <h2 className="text-lg font-bold text-white">
-              Paso 2: Los 10 Videos Competidores Más Populares (&lt; 1 Mes)
+              Paso 2: Videos Competidores Más Populares ({timeframeLabel})
             </h2>
             <span className="text-xs px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 font-semibold">
               {competitors.length} Videos
@@ -51,13 +56,38 @@ export const CompetitorsGrid: React.FC<CompetitorsGridProps> = ({ competitors, q
         </div>
       </div>
 
-      {/* Grid of 10 Competitors */}
+      {competitors.length === 0 && (
+        <div className="p-4 rounded-xl bg-amber-950/30 border border-amber-800/50 text-xs text-amber-200">
+          No se pudo leer ningún video competidor real de YouTube en este intento, así que no se muestra nada inventado.
+          Vuelve a intentarlo en unos minutos o prueba con otro texto en «Nicho / Temática de Búsqueda».
+        </div>
+      )}
+
+      {/* Grid of Competitors */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {filteredCompetitors.map((comp) => (
           <div
             key={comp.rank}
             className="bg-slate-950/70 border border-slate-800/90 hover:border-slate-700 rounded-xl p-4 flex flex-col justify-between space-y-3 transition group"
           >
+            {/* Thumbnail of the real video */}
+            {comp.thumbnail && comp.url && (
+              <a
+                href={comp.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block relative overflow-hidden rounded-lg border border-slate-800 aspect-video bg-slate-900"
+                title={`Ver "${comp.title}" en YouTube`}
+              >
+                <img
+                  src={comp.thumbnail}
+                  alt={`Miniatura de ${comp.title}`}
+                  loading="lazy"
+                  className="w-full h-full object-cover group-hover:scale-[1.02] transition duration-300"
+                />
+              </a>
+            )}
+
             {/* Top row: Rank, Channel, Views & Date */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
