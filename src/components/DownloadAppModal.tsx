@@ -27,7 +27,7 @@ export const DownloadAppModal: React.FC<DownloadAppModalProps> = ({ isOpen, onCl
   const [activeTab, setActiveTab] = useState<'github' | 'zip' | 'pwa'>('github');
 
   // GitHub repo configuration state
-  const [githubRepoUrl, setGithubRepoUrl] = useState('https://github.com/TU_USUARIO/tubepulse');
+  const [githubRepoUrl, setGithubRepoUrl] = useState('https://github.com/FMHeredia/tubepulse');
   const [copiedCommand, setCopiedCommand] = useState<string | null>(null);
 
   // Readme state

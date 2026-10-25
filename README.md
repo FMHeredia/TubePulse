@@ -11,15 +11,14 @@ Tienes tres opciones sencillas para tener este programa corriendo en tu computad
 
 ---
 
-### Opción 1: Clonar el Repositorio con Git (Recomendado para desarrolladores)
+### Opción 1: Clonar el Repositorio con Git (Recomendado)
 
 1. Abre tu terminal o consola de comandos (Command Prompt, PowerShell o Terminal de macOS/Linux).
 2. Ejecuta el comando de clonado:
 
 ```bash
-git clone https://github.com/TU_USUARIO/tubepulse.git
+git clone https://github.com/FMHeredia/tubepulse.git
 ```
-*(Sustituye `TU_USUARIO` y `tubepulse` por el nombre de tu cuenta y repositorio en GitHub).*
 
 3. Entra a la carpeta del proyecto:
 
@@ -48,12 +47,13 @@ npm run dev
 Si prefieres no usar la consola de Git:
 
 1. Ve a la página principal de este repositorio en GitHub:
-   `https://github.com/TU_USUARIO/tubepulse`
+   `https://github.com/FMHeredia/tubepulse`
 2. Haz clic en el botón verde **`<> Code`** situado arriba a la derecha.
 3. En el menú desplegable, haz clic en **`Download ZIP`**.
-   *(O usa el enlace directo de descarga: `https://github.com/TU_USUARIO/tubepulse/archive/refs/heads/main.zip`)*.
+   *(O usa el enlace directo de descarga: `https://github.com/FMHeredia/tubepulse/archive/refs/heads/main.zip`)*.
 4. Descomprime el archivo `.zip` en cualquier carpeta de tu ordenador.
-5. Sigue las instrucciones de inicio rápido según tu sistema operativo a continuación.
+5. Haz doble clic directamente en el archivo **`INICIAR_WINDOWS.bat`** (o **`INICIAR_PROGRAMA.bat`**).
+   *El script comprobará Node.js, instalará las librerías necesarias y abrirá TubePulse automáticamente en tu navegador.*
 
 ---
 
